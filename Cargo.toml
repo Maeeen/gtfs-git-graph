@@ -1,0 +1,10 @@
+[package]
+name = "git-sbb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
+git2 = "0.19.0"
+gtfs-structures = "0.42.0"
+inquire = "0.7.5"
