@@ -1,10 +1,10 @@
-use std::{collections::{HashMap, HashSet}};
+use std::collections::{HashMap, HashSet};
 
 use clap::Parser;
-use git2::{build, Commit, Oid, Repository};
-use gtfs_structures::{Gtfs, Route, Stop, Trip};
+use git2::{Commit, Oid, Repository};
+use gtfs_structures::{Gtfs, Route, Trip};
 use inquire::{
-    formatter::MultiOptionFormatter, list_option::ListOption, validator::{MultiOptionValidator, Validation}, Confirm, MultiSelect
+    list_option::ListOption, validator::Validation, Confirm, MultiSelect
 };
 
 #[derive(Parser, Debug)]
@@ -209,7 +209,7 @@ fn find_dependencies(routes: &HashMap<RouteId, GitRoute>, route_to_current_commi
 
 /// Does not 
 fn fix_order(routes: HashMap<RouteId, GitRoute>) -> HashMap<RouteId, GitRoute> {
-    let mut routes = routes;
+    let routes = routes;
 
     fn same_order(a: &GitRoute, b: &GitRoute) -> bool {
         // Make sure that both routes take the stops in the same order
@@ -242,6 +242,54 @@ fn fix_order(routes: HashMap<RouteId, GitRoute>) -> HashMap<RouteId, GitRoute> {
             if reference_routes.iter().all(|e| same_order(&flipped, &e.1)) {
                 reference_routes.push((route.0.clone(), flipped));
             } else {
+                // Okay, we can't do anymore, a reference route is being in the wrong order…
+                // Shit.
+
+                // Who's being a naughty boy here in our reference routes?
+                let naughty_boys = reference_routes.iter().filter(|e| !same_order(&flipped, &e.1)).collect::<Vec<_>>();
+                // can we flip the naughty boys?
+                let flipped_naughty = naughty_boys.iter().map(|e| {
+                    let mut flipped = e.1.clone();
+                    flipped.stops.reverse();
+                    (e.0.clone(), flipped)
+                }).collect::<HashMap<_, _>>();
+
+                // proposal for new reference routes
+                let mut new_reference = reference_routes.clone().into_iter().filter(|e| !flipped_naughty.contains_key(&e.0)).collect::<Vec<_>>(); // not naughty ones
+                for naughty in flipped_naughty {
+                    new_reference.push(naughty.clone());
+                }
+                // check if all of those are valid
+
+                // Verify that there are no more conflicts with current addition
+                if new_reference.iter().all(|e| same_order(&route.1, &e.1)) {
+                    // verify that there is no more conflicts between each routes
+                    let mut successful_proposal = true;
+                    for r1 in &new_reference {
+                        for r2 in &new_reference {
+                            if r1.0 == r2.0 {
+                                continue;
+                            }
+                            if !same_order(&r1.1, &r2.1) {
+                                successful_proposal = false;
+                                break;
+                            }
+                        }
+                    }
+                    if successful_proposal {
+                        reference_routes = new_reference;
+                        reference_routes.push(route);
+                        continue;
+                    }
+                }
+
+
+                println!("Could not unify stops order for route {}. Details:", route.1.name);
+                println!("Stops for route {}: {:?}", route.1.name, route.1.stops.iter().map(|e| e.name.clone()).collect::<Vec<_>>());
+                for e in &reference_routes {
+                    println!("({:?}) {}: {:?}", same_order(&route.1, &e.1), e.1.name, e.1.stops.iter().map(|e| e.name.clone()).collect::<Vec<_>>());
+                    println!("({:?},R) {}: {:?}", same_order(&flipped, &e.1), e.1.name, e.1.stops.iter().map(|e| e.name.clone()).collect::<Vec<_>>());
+                }
                 panic!("Could not unify stops order for route {}", route.1.name);
             }
         }

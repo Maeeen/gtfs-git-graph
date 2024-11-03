@@ -1,5 +1,7 @@
 # Preview your favorite bus, tram, trains and metro stops in a Git
 
+Example: [Romandie, Switzerland](https://github.com/Maeeen/vaud-rer-git), [graph](https://github.com/Maeeen/vaud-rer-git/network)
+
 In the same mindset as [MetroGit](https://github.com/vbarbaresi/MetroGit), this
 project generalizes the idea to any public transport that publishes their data.
 
@@ -32,3 +34,9 @@ lines.
 2. Select your lines in the CLI, confirm.
 
 3. Preview the repository in your favorite Git client.
+
+## To know
+
+* Circular lines are not supported (and not planned to be supported. I don't know
+how to represent them in a Git repository).
+* The Rust code is not the cleanest, and can crash at anytime.
